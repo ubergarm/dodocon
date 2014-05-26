@@ -1,0 +1,6 @@
+Name = {{ ansible_hostname }} 
+Device = /dev/net/tun
+Mode = switch
+{% for host in groups['all'] if hostvars[host]['ansible_hostname'] != ansible_hostname %}
+ConnectTo = {{ hostvars[host]['ansible_hostname'] }}
+{% endfor %}

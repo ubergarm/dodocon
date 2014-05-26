@@ -1,0 +1,22 @@
+---
+- name: add docker apt-key                                                         
+  apt_key: url="http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x36A1D7869245C8950F966E92D8576A8BA88D21E9"
+           state=present
+  
+- name: add docker repository to apt sources list
+  apt_repository: repo="deb http://get.docker.io/ubuntu docker main"
+  
+- name: install required packages
+  apt: pkg={{ item }} state=latest
+  with_items:
+    - cgroup-lite
+    - lxc-docker
+
+- name: configure docker daemon opts
+  lineinfile: dest=/etc/default/docker
+              line='DOCKER_OPTS="--dns=8.8.4.4"'
+              create=yes
+              state=present
+
+- name: restart docker daemon to pick up new opts
+  service: name=docker state=restarted

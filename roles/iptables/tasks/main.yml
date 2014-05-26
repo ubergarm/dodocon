@@ -1,0 +1,24 @@
+---
+- name: preconfigure debconf-set-selections
+  shell: echo {{ item }} | debconf-set-selections
+  with_items:
+    - iptables-persistent iptables-persistent/autosave_v4 boolean false
+    - iptables-persistent iptables-persistent/autosave_v6 boolean false
+
+- name: install
+  apt: pkg=iptables-persistent state=present
+
+- name: setup firewall rules
+  template: src={{ item.src }} dest=/etc/iptables/{{ item.dest }} owner=root group=root mode=0644
+  with_items:
+    - { src: 'rules.v4.j2', dest: 'rules.v4' }
+    - { src: 'rules.v6.j2', dest: 'rules.v6' }
+  notify: restart iptables-persistent
+
+- name: explicitly set hostname
+  shell: echo {{ ansible_hostname }} >> /etc/hostname && hostname -F /etc/hostname
+
+- name: update /etc/hosts to map private IPs 
+  template: src={{ item.src }} dest=/etc/{{ item.dest }} owner=root group=root mode=0644
+  with_items:
+    - { src: 'hosts.j2', dest: 'hosts' }

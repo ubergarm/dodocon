@@ -1,0 +1,21 @@
+---
+- hosts: all
+  port: "{{ sshd_port }}"
+  sudo: True
+  roles:
+    - iptables
+    - tinc
+    - common
+    - docker
+
+- hosts: web*
+  port: "{{ sshd_port }}"
+  roles:
+
+- hosts: app*
+  port: "{{ sshd_port }}"
+  roles:
+
+- hosts: db*
+  port: "{{ sshd_port }}"
+  roles:

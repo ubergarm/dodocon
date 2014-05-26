@@ -1,0 +1,25 @@
+---
+- name: add group entries into /etc/group
+  group: name={{ item }} state=present
+  with_items:
+    - sudo
+    - docker
+    - ops
+
+- name: add all users with equal ops and admin rights
+  user: name={{ item | basename | replace('.passwd','') }}
+        password="{{ lookup('file', item ) }}"
+        uid="{{ lookup('file', item | basename | replace('.passwd','.puid')) }}"
+        groups='sudo,docker,ops' append=no
+        shell=/bin/bash
+        state=present
+  with_fileglob:
+    - ./*.passwd
+
+- name: add authorized pubkeys for all users
+  authorized_key: user={{ item | basename | replace('.pub','') }}
+                  key="{{ lookup('file', item) }}"
+                  manage_dir=yes
+                  state=present
+  with_fileglob:
+    - ./*.pub

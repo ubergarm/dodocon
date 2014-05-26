@@ -1,0 +1,29 @@
+---
+- name: disable root login for ssh
+  lineinfile: dest=/etc/ssh/sshd_config regexp=^PermitRootLogin line='PermitRootLogin no'
+
+- name: map default ssh to port {{ sshd_port }}
+  lineinfile: dest=/etc/ssh/sshd_config regexp=^Port line='Port {{ sshd_port }}'
+
+- name: disable root passwd so only sudo users allowed
+  shell: passwd -l {{ item.login }}
+  when: hosting_provider == '{{ item.provider }}'
+  with_items:
+    - { provider: 'digitalocean', login: 'root'   }
+    - { provider: 'linode',       login: 'root'   }
+    - { provider: 'ec2',          login: 'ubuntu' }
+
+- name: remove any credentials still in .ssh dir
+  file: path=/{{ item.dir }}/.ssh state=absent
+  when: hosting_provider == '{{ item.provider }}'
+  with_items:
+    - { provider: 'digitalocean', dir: 'root'   }
+    - { provider: 'linode',       dir: 'root'   }
+    - { provider: 'ec2',          dir: 'root' }
+    - { provider: 'ec2',          dir: 'home/ubuntu' }
+
+- name: restart sshd
+  service: name=ssh state=restarted
+
+- name: Make sure security group allows port {{ sshd_port }} inbound tcp!
+  debug: msg='Make sure security group allows port {{ sshd_port }} inbound tcp!'

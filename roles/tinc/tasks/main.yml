@@ -1,0 +1,79 @@
+---
+- name: install package
+  apt: pkg=tinc state=present
+
+- name: stop tinc if it is running
+  service: name=tinc state=stopped
+
+- name: clean up old hosts and key file Rambo mode
+  shell: rm -rf /etc/tinc/vpn
+
+- name: create directories
+  file: path={{ item }} owner=root group=root mode=0755 state=directory
+  with_items:
+    - /etc/tinc/vpn/hosts
+
+- name: config tinc.conf file
+  template: src={{ item.src }} dest=/etc/tinc/vpn/{{ item.dest }} owner=root group=root mode=0644
+  with_items:
+    - { src: 'tinc.conf.j2', dest: 'tinc.conf' }
+
+- name: configure tinc host file using private network ip address
+  lineinfile: dest=/etc/tinc/vpn/hosts/{{ hostvars[item]['ansible_hostname'] }}
+              line="Address = {{ hostvars[item]['ansible_eth1']['ipv4']['address'] }}"
+              create=yes
+              state=present
+  with_items: groups['all']
+  when: hostvars[item]['ansible_hostname'] == ansible_hostname
+
+- name: generate private keys and append public key
+  shell: tincd -n vpn -K4096
+
+- name: generate tinc up and down scripts
+  lineinfile: dest=/etc/tinc/vpn/{{ item }}
+              line=#!/bin/bash
+              owner=root
+              group=root
+              mode=0755
+              create=yes
+              state=present
+  with_items:
+    - tinc-up
+    - tinc-down
+
+- name: populate tinc up script
+  lineinfile: dest=/etc/tinc/vpn/tinc-up
+              line="ifconfig $INTERFACE 10.0.{{ item.0 }}.1 netmask 255.255.0.0"
+              state=present
+  with_indexed_items: groups['all']
+  when: hostvars[item.1]['ansible_hostname'] == ansible_hostname
+
+- name: populate tinc down script
+  lineinfile: dest=/etc/tinc/vpn/tinc-down
+              line="ifconfig $INTERFACE down"
+              state=present
+
+- name: clean out stale local /tmp/tinc-hosts files
+  debug: msg=TODO 
+
+- name: fetch each hosts file
+  fetch: src=/etc/tinc/vpn/hosts/{{ ansible_hostname }}
+         dest=/tmp/tinc-hosts/{{ ansible_hostname }}
+
+- name: distribute out previously aggregated hosts files
+  copy: src={{ item }}
+        dest=/etc/tinc/vpn/hosts/{{ item | basename }}
+        owner=root
+        group=root
+        mode=0644
+  with_fileglob:
+    - /tmp/tinc-hosts/*/*/*/*/*/*/*
+
+- name: add vpn network to nets.boot file
+  lineinfile: dest=/etc/tinc/nets.boot
+              line=vpn
+              create=yes
+              state=present
+
+- name: restart tinc for good measure
+  service: name=tinc state=started

@@ -1,0 +1,80 @@
+# ansible hosts inventory
+# ===========================================
+# Servers grouped by data center region and cloud provider
+#
+# If domain is not yet registered, use optional ansible_ssh_host=IP line e.g.:
+#     subdomain.topdomain.com ansible_ssh_host=123.123.123.123
+#
+# Group variables can be set in ansible/group_vars/GROUP_NAME
+#
+# Host specific variables can be set in ansible/host_vars/HOSTNAME
+
+# Local servers grouped by 'region'
+[local_vagrant]
+[local_docker]
+[local_machine]
+##localhost ansible_ssh_host=127.0.0.1 #example entry
+
+# Local all servers group
+[local_servers:children]
+local_vagrant
+local_docker
+local_machine
+
+# DigitalOcean servers grouped region
+[do_nyc1]
+[do_nyc2]
+web1.mydomain.com    ansible_ssh_host=107.170.123.123
+app1.mydomain.com    ansible_ssh_host=107.170.123.123
+db1.mydomain.com     ansible_ssh_host=107.170.123.123
+[do_amsterdam1]
+[do_amsterdam2]
+[do_sanfran1]
+[do_singapore1]
+
+# DigitalOcean all servers group
+[do_servers:children]
+do_nyc1
+do_nyc2
+do_amsterdam1
+do_amsterdam2
+do_sanfran1
+do_singapore1
+
+# Linode servers grouped by region
+[linode_dallas]
+[linode_freemont]
+[linode_atlanta]
+[linode_newark]
+[linode_london]
+[linode_tokyo]
+
+# Linode all servers group
+[linode_servers:children]
+linode_dallas
+linode_freemont
+linode_atlanta
+linode_newark
+linode_london
+linode_tokyo
+
+# Amazon EC2 servers grouped region
+[ec2_ap_northeast_1]                #asia pacific (Tokyo)
+[ec2_ap_southeast_1]                #asia pacific (Singapore)
+[ec2_ap_southeast_2]                #asia pacific (Sydney)
+[ec2_eu_west_1]                     #EU (Ireland)
+[ec2_sa_east_1]                     #South America (Sao Paulo)
+[ec2_us_east_1]                     #US East (Northern Virginia)
+[ec2_us_west_1]                     #US West (Northern California)
+[ec2_us_west_2]                     #US West (Oregon)
+
+# Amazon EC2 all servers group
+[ec2_servers:children]
+ec2_ap_northeast_1
+ec2_ap_southeast_1
+ec2_ap_southeast_2
+ec2_eu_west_1
+ec2_sa_east_1
+ec2_us_east_1
+ec2_us_west_1
+ec2_us_west_2

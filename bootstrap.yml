@@ -1,0 +1,20 @@
+---
+- hosts: all
+  user: root
+  vars_prompt:
+    - name: "cryptfs_key"
+      prompt: "Please type or paste in the luks encryption key."
+      confirm: yes
+      private: yes
+      default: "should be at least 60 characters maybe 80"
+    - name: "papertrail_endpoint"
+      prompt: "Please type or paste in your papertrail rsyslog endpoint."
+      confirm: no
+      private: no
+      default: "logs.papertrailapp.com:12345"
+  roles:
+    - papertrail
+    - cryptfs
+    - unattended-upgrades
+    - users
+    - sshd

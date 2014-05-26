@@ -1,0 +1,9 @@
+# variables for local_servers group
+---
+hosting_provider: digitalocean
+
+## LUKS encrypted volume setting
+cryptfs_root: /cryptfs
+cryptfs_mnt: /mnt/cryptfs
+cryptfs_volume: /dev/vda
+cryptfs_unencrypted_size: 5368709120

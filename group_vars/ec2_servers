@@ -1,0 +1,3 @@
+# variables for local_servers group
+---
+hosting_provider: ec2

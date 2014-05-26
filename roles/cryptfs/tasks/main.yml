@@ -1,0 +1,17 @@
+# Setup LUKS encrypted SWAP and DISK
+# [*](https://launchbylunch.com/posts/2014/Jan/13/encrypting-docker-on-digitalocean/)
+---
+- name: install base packages
+  apt: pkg={{ item }} state=latest update_cache=true
+  with_items:
+    - cryptsetup
+
+- name: location on the root fs where encryption block device will live
+  file: path={{ cryptfs_root }} owner=root group=root mode=0700 state=directory
+  register: result
+
+# only continue if the cryptfs_root directory did not exist
+# DO NOT INSTALL CRYPTFS ON AN EXISTING HOST SYSTEM AS IT MAY CAUSE DATA LOSS!
+- name: install cryptfs
+  include: cryptfs.yml
+  when: result|changed                                                          

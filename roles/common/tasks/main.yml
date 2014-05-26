@@ -1,0 +1,30 @@
+---
+- name: install base packages
+  apt: pkg={{ item }} state=latest update_cache=true
+  with_items:
+    - curl
+    - wget
+    - python-apt
+    - python-pycurl
+    - python-pip
+    - python-virtualenv
+    - git-core
+    - tig
+    - screen
+    - tmux
+    - htop
+    - iotop
+    - bmon
+    - bridge-utils
+    - vim-tiny
+    - tree
+    - nfs-common
+
+- name: set en_US locale
+  shell: update-locale LC_ALL=en_US.UTF-8 && update-locale LANG=en_US.UTF-8 && locale-gen en_US.UTF-8
+
+- name: set timezone to Etc/UTC
+  shell: echo "Etc/UTC" > /etc/timezone && dpkg-reconfigure -f noninteractive tzdata
+
+- name: set default editor to vim
+  shell: update-alternatives --set editor /usr/bin/vim.tiny

@@ -1,0 +1,12 @@
+---
+- name: remove all existing syslog rules Rambo style
+  shell: rm -rf /etc/rsyslog.d/*
+
+- name: add line to rsyslog conf to forward logs to papertrail
+  lineinfile: dest=/etc/rsyslog.d/papertrailapp.conf
+              line='*.* @{{ papertrail_endpoint }}'
+              state=present
+              create=yes
+
+- name: restart rsyslog
+  service: name=rsyslog state=restarted

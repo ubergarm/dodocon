@@ -1,0 +1,4 @@
+# variables for all hosts
+---
+sshd_port: 654
+

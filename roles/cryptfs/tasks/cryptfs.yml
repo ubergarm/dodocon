@@ -1,0 +1,104 @@
+---
+- name: create and allocate swap file equal to the size of total memory
+  shell: dd if=/dev/zero of={{ cryptfs_root }}/swap bs=1M count={{ ansible_memtotal_mb }}
+
+- name: create sparse file size of full volume minus 5Gb
+  shell: truncate -s {{ item['size_total'] - cryptfs_unencrypted_size|int }} {{ cryptfs_root }}/disk
+  with_items: ansible_mounts
+  when: item['device'] == '{{ cryptfs_volume }}'
+
+- name: only root can access these files
+  shell: chmod -R 700 {{ cryptfs_root }}
+
+- name: add line to /etc/crypttab for swap file
+  lineinfile: dest=/etc/crypttab line='swap {{ cryptfs_root }}/swap /dev/urandom swap,noearly' state=present
+
+- name: add line to /etc/fstab for swap file
+  lineinfile: dest=/etc/fstab line='/dev/mapper/swap none swap sw 0 0' state=present
+
+- name: reload cryptdisks service to pickup swap device
+  shell: echo -n {{ cryptfs_key }} | service cryptdisks reload
+  register: result
+
+- name: cryptdisks reloaded result
+  debug: msg={{ result.stdout_lines }}
+
+- name: turn on encrypted swap
+  shell: swapon -a
+ 
+- name: pick an unused loop back device
+  shell: losetup -f
+  register: loop_dev
+
+- name: mount block device file to loop back device
+  shell: losetup {{ loop_dev.stdout }} {{ cryptfs_root }}/disk
+
+- name: create a LUKS volume with the default options using passphrase on stdin
+  shell: echo -n {{ cryptfs_key }} | cryptsetup --batch-mode --key-file=- luksFormat {{ loop_dev.stdout }}
+
+- name: open up LUKS volume so it appears in /dev/mapper
+  shell: echo -n {{ cryptfs_key }} | cryptsetup luksOpen --key-file=- {{ loop_dev.stdout }} cryptfs
+
+- name: get status of newly created cryptfs
+  shell: cryptsetup status cryptfs
+  register: result
+
+- name: print status of newly created cryptfs
+  debug: msg={{ result.stdout_lines }}
+
+- name: create ext4 filesystem with no reserved blocks on encrypted block device
+  shell: mkfs.ext4 -m 0 /dev/mapper/cryptfs
+
+# if the luks header is damaged and you need to restore the LUKS header something like this:
+# $ cryptsetup luksHeaderRestore --header-backup-file /path/to/backupfile /dev/loopX
+- name: save backup of LUKS header
+  shell: cryptsetup luksHeaderBackup --header-backup-file={{ cryptfs_root }}/luks-header.bak {{ loop_dev.stdout }}
+
+- name: create mount point for encrypted filesystem
+  file: path={{ cryptfs_mnt }} owner=root group=root mode=0700 state=directory
+
+- name: add line to /etc/crypttab using fixed key for cryptfs
+  lineinfile: dest=/etc/crypttab line='cryptfs {{ cryptfs_root }}/disk none luks' state=present
+
+- name: add line to /etc/fstab for cryptfs
+  lineinfile: dest=/etc/fstab line='/dev/mapper/cryptfs {{ cryptfs_mnt }} ext4 defaults 0 1' state=present
+
+- name: pickup cryptfs mount point
+  shell: mount -a
+
+- name: create secure bind mount source directories (oldDir)
+  file: path={{ cryptfs_mnt }}{{ item.path }} owner=root group=root mode={{ item.mode }} state=directory
+  with_items:
+    - { path: "/var/lib/docker", mode: "0755" }
+    - { path: "/var/log", mode: "0755" }
+    - { path: "/srv", mode: "0755" }
+    - { path: "/home", mode: "0755" }
+
+- name: create visible bind mount target directories (newDir)
+  file: path={{ item.path }} owner=root group=root mode={{ item.mode }} state=directory
+  with_items:
+    - { path: "/var/lib/docker", mode: "0755" }
+    - { path: "/var/log", mode: "0755" }
+    - { path: "/srv", mode: "0755" }
+    - { path: "/home", mode: "0755" }
+
+- name: backup existing logs into encryptfs before pulling the rug out from under it
+  shell: cp -a --parents {{ item }} {{ cryptfs_mnt }}
+  with_items:
+    - /var/log
+
+- name: clean out existing duplicate unencrypted files
+  shell: rm -rf {{ item }}/*
+  with_items:
+    - /var/log
+ 
+- name: set bind mounts in fstab
+  lineinfile: dest=/etc/fstab line='{{ cryptfs_mnt }}{{ item }} {{ item }} none bind 0 0' state=present
+  with_items:
+    - /var/lib/docker
+    - /var/log
+    - /srv
+    - /home
+
+- name: pickup bind mounts from fstab with mount -a
+  shell: mount -a
