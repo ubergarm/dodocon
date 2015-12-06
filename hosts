@@ -49,6 +49,7 @@ do_singapore1
 [linode_london]
 [linode_tokyo]
 [linode_singapore]
+[linode_frankfurt]
 
 # Linode all servers group
 [linode_servers:children]
@@ -59,6 +60,7 @@ linode_newark
 linode_london
 linode_tokyo
 linode_singapore
+linode_frankfurt
 
 # Amazon EC2 servers grouped region
 [ec2_ap_northeast_1]                #asia pacific (Tokyo)
